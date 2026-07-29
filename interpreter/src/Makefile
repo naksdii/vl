@@ -1,7 +1,7 @@
 # --- Configuration ---
 TARGET        = verbose_lang
 CXX           = g++
-CXXFLAGS      = -std=c++17 -O3 -I/usr/include/antlr4-runtime -I. -Iinclude -Iparser
+CXXFLAGS      = -std=c++17 -O3 -I/usr/include/antlr4-runtime -I. -Iinclude -Iparser -static
 LDFLAGS       = -lantlr4-runtime
 
 # --- ANTLR Configuration ---

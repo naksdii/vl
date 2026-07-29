@@ -1,12 +1,20 @@
-fn b => int(x => int, f => fn => int(int)) exec {
-    return f(x);
+fn add => float (a=>float,b=>float) exec { return a + b; }
+fn sub => float (a=>float,b=>float) exec { return a - b; }
+fn mul => float (a=>float,b=>float) exec { return a * b;}
+fn div => float (a=>float,b=>float) exec {
+    if (b == 0) exec {
+        print ("Division by zero not allowed");
+        return 0;
+    }
+    return a / b;
 }
-
-fn c => int(n => int) exec {
-    return n + 1;
+fn calc => void (a=>float,op =>fn => float (float,float) ,b=>float) exec {
+    print(op(a,b));
 }
-
-exec {
-    mut a => int = b(1, c);
-    print(a);
+exec
+{
+    mut a => float  = input();
+    mut op => string = input();
+    mut b => float = input();
+    calc(a,op,b);
 }
