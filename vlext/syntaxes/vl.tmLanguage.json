@@ -1,0 +1,98 @@
+{
+  "fileTypes": ["vl"],
+  "name": "VL",
+  "scopeName": "source.vl",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#keywords" },
+    { "include": "#constants" },
+    { "include": "#storage" },
+    { "include": "#operators" },
+    { "include": "#numbers" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.block.vl",
+          "begin": ";<",
+          "end": ">;"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.vl",
+          "begin": "\"",
+          "end": "\""
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.vl",
+          "match": "\\b(if|while|return|exec|import|as)\\b"
+        },
+        {
+          "name": "keyword.other.vl",
+          "match": "\\b(opn|set|print)\\b"
+        }
+      ]
+    },
+    "storage": {
+      "patterns": [
+        {
+          "name": "storage.type.vl",
+          "match": "\\b(fn|void)\\b"
+        },
+        {
+          "name": "storage.modifier.vl",
+          "match": "\\b(mut|const)\\b"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.vl",
+          "match": "\\b(TRUE|FALSE)\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.comparison.vl",
+          "match": "==|!=|>=|<=|>|<"
+        },
+        {
+          "name": "keyword.operator.assignment.vl",
+          "match": "=>|="
+        },
+        {
+          "name": "keyword.operator.arrow.vl",
+          "match": "->"
+        },
+        {
+          "name": "keyword.operator.arithmetic.vl",
+          "match": "\\+|\\-|\\*|\\/|\\%"
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.float.vl",
+          "match": "\\b[0-9]+\\.[0-9]+\\b"
+        },
+        {
+          "name": "constant.numeric.integer.vl",
+          "match": "\\b[0-9]+\\b"
+        }
+      ]
+    }
+  }
+}

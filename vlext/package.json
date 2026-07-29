@@ -1,0 +1,33 @@
+{
+  "name": "vl-syntax",
+  "displayName": "VL Syntax Highlighting",
+  "version": "1.0.0",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "vl",
+        "aliases": [
+          "VL",
+          "vl"
+        ],
+        "extensions": [
+          ".vl"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "vl",
+        "scopeName": "source.vl",
+        "path": "./syntaxes/vl.tmLanguage.json"
+      }
+    ]
+  }
+}

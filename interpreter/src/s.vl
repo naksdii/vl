@@ -1,0 +1,12 @@
+fn b => int(x => int, f => fn => int(int)) exec {
+    return f(x);
+}
+
+fn c => int(n => int) exec {
+    return n + 1;
+}
+
+exec {
+    mut a => int = b(1, c);
+    print(a);
+}

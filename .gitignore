@@ -1,0 +1,20 @@
+# --- C++ / Interpreter ---
+interpreter/src/main.o
+interpreter/src/parser/*.o
+interpreter/src/parser/*.interp
+interpreter/src/parser/*.tokens
+interpreter/src/*.o
+interpreter/src/verbose_lang
+
+# Caso você gere arquivos binários ou de build em outras pastas:
+build/
+bin/
+*.exe
+*.out
+
+# --- VS Code / Node / Extensão ---
+node_modules/
+vlext/node_modules/
+*.vsix
+.vscode-test/
+.DS_Store
