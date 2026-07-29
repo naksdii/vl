@@ -1,18 +1,17 @@
 #pragma once
 
 #include "Thing.h"
-#include <functional>
-#include "VLBaseVisitor.h"
-#include "VLParser.h"
+#include "VL.h"
 #include <any>
 #include <fstream>
+#include <functional>
 #include <iostream>
+#include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <memory>
 
 // Exceção de controle de fluxo para o 'return'
 struct ReturnException {
@@ -38,7 +37,8 @@ struct Type {
   Type() = default;
   explicit Type(std::string n) : name(std::move(n)) {}
   Type(const Type &other)
-      : name(other.name), isArray(other.isArray), isFunction(other.isFunction), parameters(other.parameters) {
+      : name(other.name), isArray(other.isArray), isFunction(other.isFunction),
+        parameters(other.parameters) {
     if (other.returnType)
       returnType = std::make_unique<Type>(*other.returnType);
   }
@@ -57,17 +57,24 @@ struct Type {
   }
 };
 
-// Helper: extract original source text for a token interval using the underlying CharStream
-static std::string getTextFromTokenInterval(antlr4::TokenStream *ts, const antlr4::misc::Interval &intervalTokens) {
-  // Prefer extracting from the underlying CharStream (preserves whitespace/comments)
-  if (auto common = dynamic_cast<antlr4::CommonTokenStream*>(ts)) {
-    if (intervalTokens.a < 0 || intervalTokens.b < 0) return std::string();
+// Helper: extract original source text for a token interval using the
+// underlying CharStream
+static std::string
+getTextFromTokenInterval(antlr4::TokenStream *ts,
+                         const antlr4::misc::Interval &intervalTokens) {
+  // Prefer extracting from the underlying CharStream (preserves
+  // whitespace/comments)
+  if (auto common = dynamic_cast<antlr4::CommonTokenStream *>(ts)) {
+    if (intervalTokens.a < 0 || intervalTokens.b < 0)
+      return std::string();
     antlr4::Token *startTk = common->get(intervalTokens.a);
     antlr4::Token *stopTk = common->get(intervalTokens.b);
     if (startTk && stopTk) {
-      if (auto lexer = dynamic_cast<antlr4::Lexer*>(startTk->getTokenSource())) {
+      if (auto lexer =
+              dynamic_cast<antlr4::Lexer *>(startTk->getTokenSource())) {
         if (auto cs = lexer->getInputStream()) {
-          antlr4::misc::Interval charInterval(startTk->getStartIndex(), stopTk->getStopIndex());
+          antlr4::misc::Interval charInterval(startTk->getStartIndex(),
+                                              stopTk->getStopIndex());
           return cs->getText(charInterval);
         }
       }
@@ -79,7 +86,8 @@ static std::string getTextFromTokenInterval(antlr4::TokenStream *ts, const antlr
 
 // Converte um DataTypeContext do parser em um Type estruturado
 static Type parseType(VLParser::DataTypeContext *ctx) {
-  if (!ctx) return Type{"void"};
+  if (!ctx)
+    return Type{"void"};
 
   if (ctx->primitiveType()) {
     Type t;
@@ -99,7 +107,8 @@ static Type parseType(VLParser::DataTypeContext *ctx) {
     t.name = "fn";
 
     if (ctx->functionType()->dataType())
-      t.returnType = std::make_unique<Type>(parseType(ctx->functionType()->dataType()));
+      t.returnType =
+          std::make_unique<Type>(parseType(ctx->functionType()->dataType()));
 
     if (ctx->functionType()->typeList()) {
       for (auto p : ctx->functionType()->typeList()->dataType())
@@ -114,6 +123,7 @@ static Type parseType(VLParser::DataTypeContext *ctx) {
 
 class Interpreter : public VLBaseVisitor {
 private:
+  bool debugMode = false;
   antlr4::TokenStream *tokenStream = nullptr;
   struct Symbol {
     Thing value;
@@ -132,11 +142,13 @@ private:
     std::vector<Parameter> params;
     Type returnType;
     std::string bodyText; // store the block source (e.g., "exec { ... }")
-    bool isPublic; // true = opn (public), false = private
+    bool isPublic;        // true = opn (public), false = private
   };
 
   // Built-in functions (name -> implementation)
-  std::unordered_map<std::string, std::function<ResolvedArg(const std::vector<ResolvedArg>&)>> builtins;
+  std::unordered_map<
+      std::string, std::function<ResolvedArg(const std::vector<ResolvedArg> &)>>
+      builtins;
 
   // Tabela Global de Funções
   std::unordered_map<std::string, FunctionSymbol> functionTable;
@@ -170,17 +182,21 @@ private:
         std::ostringstream oss;
         oss << "fn(";
         for (size_t i = 0; i < t.parameters.size(); ++i) {
-          if (i) oss << ", ";
+          if (i)
+            oss << ", ";
           oss << fmt(t.parameters[i]);
         }
         oss << ") -> ";
-        if (t.returnType) oss << fmt(*t.returnType);
-        else oss << "void";
+        if (t.returnType)
+          oss << fmt(*t.returnType);
+        else
+          oss << "void";
         return oss.str();
       }
       std::ostringstream oss;
       oss << t.name;
-      if (t.isArray) oss << "[]";
+      if (t.isArray)
+        oss << "[]";
       return oss.str();
     };
     return fmt(type);
@@ -189,7 +205,8 @@ private:
   std::string formatParams(const std::vector<Parameter> &params) const {
     std::ostringstream oss;
     for (size_t i = 0; i < params.size(); ++i) {
-      if (i) oss << ", ";
+      if (i)
+        oss << ", ";
       oss << params[i].name << ":" << formatType(params[i].type);
     }
     return oss.str();
@@ -213,7 +230,6 @@ private:
     }
     return text;
   }
-
 
   // Avalia Nós Primários
   ResolvedArg evaluatePrimary(VLParser::PrimaryContext *ctx) {
@@ -250,9 +266,10 @@ private:
         if (!sym->isInitialized)
           throw std::runtime_error("Erro: Variável '" + varName +
                                    "' não inicializada.");
-        if (varName == "b" || varName == "a" || varName == "n") {
-          std::cerr << "[debug] resolving " << varName << " -> " << sym->value.toString() << std::endl;
-        }
+        if (debugMode)
+          std::cerr << "[debug] resolving " << varName << " -> "
+                    << sym->value.toString() << std::endl;
+
         return {sym->value.toString(), sym->arrayValues};
       }
 
@@ -306,21 +323,25 @@ private:
           try {
             int times = std::stoi(rightArg.value);
             std::string result;
-            for (int i = 0; i < times; ++i) result += leftArg.value;
+            for (int i = 0; i < times; ++i)
+              result += leftArg.value;
             return {result, {}};
           } catch (...) {
             // right string * int
             try {
               int times = std::stoi(leftArg.value);
               std::string result;
-              for (int i = 0; i < times; ++i) result += rightArg.value;
+              for (int i = 0; i < times; ++i)
+                result += rightArg.value;
               return {result, {}};
             } catch (...) {
-              throw std::runtime_error("Erro: Operação '*' não aplicável aos operandos fornecidos.");
+              throw std::runtime_error(
+                  "Erro: Operação '*' não aplicável aos operandos fornecidos.");
             }
           }
         }
-        throw std::runtime_error("Erro: Operação aritmética aplicada a operandos não numéricos.");
+        throw std::runtime_error(
+            "Erro: Operação aritmética aplicada a operandos não numéricos.");
       }
     }
 
@@ -345,7 +366,8 @@ private:
         if (op == "+") {
           return {leftArg.value + rightArg.value, {}};
         }
-        throw std::runtime_error("Erro: Operação aritmética '-' não aplicável a operandos não numéricos.");
+        throw std::runtime_error("Erro: Operação aritmética '-' não aplicável "
+                                 "a operandos não numéricos.");
       }
     }
 
@@ -353,33 +375,42 @@ private:
   }
 
 public:
-Interpreter(antlr4::TokenStream *ts) : tokenStream(ts) {
-  enterScope(); // global scope
+  Interpreter(antlr4::TokenStream *ts) : tokenStream(ts) {
+    enterScope(); // global scope
 
-  // initialize built-ins
-  builtins["print"] = [&](const std::vector<ResolvedArg> &args) -> ResolvedArg {
-    std::ostringstream out;
-    for (size_t i = 0; i < args.size(); ++i) {
-      if (i) out << " ";
-      out << args[i].value;
-    }
-    std::string outStr = out.str();
-    // program output goes to stdout only
-    std::cout << outStr << std::endl << std::flush;
-    // detailed log in English
-    return {outStr, {}};
-  };
+    // initialize built-ins
+    builtins["print"] =
+        [&](const std::vector<ResolvedArg> &args) -> ResolvedArg {
+      std::ostringstream out;
+      for (size_t i = 0; i < args.size(); ++i) {
+        if (i)
+          out << " ";
+        out << args[i].value;
+      }
+      std::string outStr = out.str();
+      // program output goes to stdout only
+      std::cout << outStr << std::endl << std::flush;
+      // detailed log in English
+      return {outStr, {}};
+    };
 
-  builtins["input"] = [&](const std::vector<ResolvedArg> &args) -> ResolvedArg {
-    std::string prompt = "";
-    if (!args.empty()) prompt = args[0].value;
-    if (!prompt.empty()) std::cout << prompt << std::flush;
-    std::string line;
-    if (!std::getline(std::cin, line)) line = "";
-    return {line, {}};
-  };
-}
-
+    builtins["input"] =
+        [&](const std::vector<ResolvedArg> &args) -> ResolvedArg {
+      std::string prompt = "";
+      if (!args.empty())
+        prompt = args[0].value;
+      if (!prompt.empty())
+        std::cout << prompt << std::flush;
+      std::string line;
+      if (!std::getline(std::cin, line))
+        line = "";
+      return {line, {}};
+    };
+  }
+  void setDebug(bool val) {
+    this->debugMode = val;
+    return;
+  }
   // PROGRAMA E BLOCOS
   virtual std::any visitImportStmt(VLParser::ImportStmtContext *ctx) override {
     // 1. Extrai o caminho do arquivo (removendo as aspas da string)
@@ -414,10 +445,11 @@ Interpreter(antlr4::TokenStream *ts) : tokenStream(ts) {
     buffer << file.rdbuf();
     std::string fileContent = buffer.str();
 
-      // 4. Executa o ANTLR no código do arquivo importado
+    // 4. Executa o ANTLR no código do arquivo importado
     auto importInput = std::make_unique<antlr4::ANTLRInputStream>(fileContent);
     auto importLexer = std::make_unique<VLLexer>(importInput.get());
-    auto importTokens = std::make_unique<antlr4::CommonTokenStream>(importLexer.get());
+    auto importTokens =
+        std::make_unique<antlr4::CommonTokenStream>(importLexer.get());
     auto importParser = std::make_unique<VLParser>(importTokens.get());
 
     VLParser::ProgramContext *importTree = importParser->program();
@@ -440,21 +472,26 @@ Interpreter(antlr4::TokenStream *ts) : tokenStream(ts) {
 
       // Verifica se a função é pública ('opn')
       bool isPublic = (funcCtx->visibility() != nullptr);
-      if (!isPublic) continue; // Funções privadas não são exportadas
+      if (!isPublic)
+        continue; // Funções privadas não são exportadas
 
-      Type returnType = funcCtx->dataType() ? parseType(funcCtx->dataType()) : Type("void");
+      Type returnType =
+          funcCtx->dataType() ? parseType(funcCtx->dataType()) : Type("void");
 
       std::vector<Parameter> params;
       if (funcCtx->paramList()) {
         for (auto paramCtx : funcCtx->paramList()->param()) {
-          params.push_back({paramCtx->ID()->getText(), parseType(paramCtx->dataType())});
+          params.push_back(
+              {paramCtx->ID()->getText(), parseType(paramCtx->dataType())});
         }
       }
 
       std::string globalFuncName = namespaceAlias + "." + funcName;
       auto interval = funcCtx->block()->getSourceInterval();
-      std::string blockText = getTextFromTokenInterval(stored.tokens.get(), interval);
-      functionTable[globalFuncName] = FunctionSymbol{params, returnType, blockText, true};
+      std::string blockText =
+          getTextFromTokenInterval(stored.tokens.get(), interval);
+      functionTable[globalFuncName] =
+          FunctionSymbol{params, returnType, blockText, true};
     }
 
     return nullptr;
@@ -600,7 +637,8 @@ Interpreter(antlr4::TokenStream *ts) : tokenStream(ts) {
         for (auto &c : val)
           c = toupper(c);
         return ResolvedArg{val, {}};
-      }if (methodName == "to_int") {
+      }
+      if (methodName == "to_int") {
         return ResolvedArg{sym->value.toString(), {}};
       }
       if (methodName == "to_lower") {
@@ -659,7 +697,8 @@ Interpreter(antlr4::TokenStream *ts) : tokenStream(ts) {
   virtual std::any
   visitFunctionDecl(VLParser::FunctionDeclContext *ctx) override {
     std::string funcName = ctx->ID()->getText();
-    Type returnType = ctx->dataType() ? parseType(ctx->dataType()) : Type{"void"};
+    Type returnType =
+        ctx->dataType() ? parseType(ctx->dataType()) : Type{"void"};
 
     if (functionTable.find(funcName) != functionTable.end()) {
       throw std::runtime_error("Erro: Função '" + funcName + "' já declarada.");
@@ -668,7 +707,8 @@ Interpreter(antlr4::TokenStream *ts) : tokenStream(ts) {
     std::vector<Parameter> params;
     if (ctx->paramList()) {
       for (auto paramCtx : ctx->paramList()->param()) {
-        params.push_back({paramCtx->ID()->getText(), parseType(paramCtx->dataType())});
+        params.push_back(
+            {paramCtx->ID()->getText(), parseType(paramCtx->dataType())});
       }
     }
 
@@ -677,10 +717,12 @@ Interpreter(antlr4::TokenStream *ts) : tokenStream(ts) {
     if (tokenStream) {
       auto interval = ctx->block()->getSourceInterval();
       std::string blockText = getTextFromTokenInterval(tokenStream, interval);
-      functionTable[funcName] = FunctionSymbol{params, returnType, blockText, isPublic};
+      functionTable[funcName] =
+          FunctionSymbol{params, returnType, blockText, isPublic};
     } else {
       // Fallback to getText() if no token stream is available
-      functionTable[funcName] = FunctionSymbol{params, returnType, ctx->block()->getText(), isPublic};
+      functionTable[funcName] =
+          FunctionSymbol{params, returnType, ctx->block()->getText(), isPublic};
     }
 
     return nullptr;
@@ -701,8 +743,11 @@ Interpreter(antlr4::TokenStream *ts) : tokenStream(ts) {
           functionTable.find(sym->value.toString()) != functionTable.end()) {
         targetName = sym->value.toString();
       }
-      if (targetName == "a" || targetName == "b" || targetName == "c") {
-        std::cerr << "[debug] call " << ctx->funcName->getText() << " -> " << targetName << " | value=" << (sym ? sym->value.toString() : "<none>") << std::endl;
+      if (debugMode) {
+        std::cerr << "[debug] call " << ctx->funcName->getText() << " -> "
+                  << targetName
+                  << " | value=" << (sym ? sym->value.toString() : "<none>")
+                  << std::endl;
       }
     } else {
       targetName = ctx->namespace_->getText() + "." + ctx->funcName->getText();
@@ -720,7 +765,8 @@ Interpreter(antlr4::TokenStream *ts) : tokenStream(ts) {
         // evaluate args
         std::vector<ResolvedArg> callArgs;
         if (ctx->argList()) {
-          for (auto a : ctx->argList()->expr()) callArgs.push_back(evaluateExpr(a));
+          for (auto a : ctx->argList()->expr())
+            callArgs.push_back(evaluateExpr(a));
         }
         ResolvedArg r = bit->second(callArgs);
         // If built-in returned a value, pack it
@@ -747,7 +793,6 @@ Interpreter(antlr4::TokenStream *ts) : tokenStream(ts) {
           "Erro: Quantidade de argumentos incorreta na chamada da função '" +
           targetName + "'.");
     }
-
 
     // Avalia os argumentos no escopo atual
     std::vector<ResolvedArg> resolvedArgs;
@@ -776,8 +821,8 @@ Interpreter(antlr4::TokenStream *ts) : tokenStream(ts) {
       VLParser parser(&tokens);
       VLParser::BlockContext *blockCtx = parser.block();
 
-      // Como já criamos um escopo com os parâmetros acima, visitamos diretamente
-      // as crianças do bloco para evitar criar um escopo extra.
+      // Como já criamos um escopo com os parâmetros acima, visitamos
+      // diretamente as crianças do bloco para evitar criar um escopo extra.
       visitChildren(blockCtx);
     } catch (const ReturnException &e) {
       returnArg.value = e.value;
@@ -854,38 +899,48 @@ Interpreter(antlr4::TokenStream *ts) : tokenStream(ts) {
       for (size_t i = 0; i < params.size(); ++i) {
         out << params[i].name << ":";
         // stringify type (recursive)
-        std::function<std::string(const Type&)> t2s;
+        std::function<std::string(const Type &)> t2s;
         t2s = [&](const Type &t) -> std::string {
           std::ostringstream s;
           if (t.isFunction) {
             s << "fn(";
             for (size_t j = 0; j < t.parameters.size(); ++j) {
-              if (j) s << ",";
+              if (j)
+                s << ",";
               s << t2s(t.parameters[j]);
             }
             s << ") -> ";
-            if (t.returnType) s << t2s(*t.returnType);
-            else s << "void";
+            if (t.returnType)
+              s << t2s(*t.returnType);
+            else
+              s << "void";
           } else {
             s << t.name;
-            if (t.isArray) s << "[]";
+            if (t.isArray)
+              s << "[]";
           }
           return s.str();
         };
         out << t2s(params[i].type);
-        if (i + 1 < params.size()) out << ", ";
+        if (i + 1 < params.size())
+          out << ", ";
       }
-      out << ") -> " << (kv.second.returnType.name.empty() ? std::string("void") : kv.second.returnType.name) << "\n";
+      out << ") -> "
+          << (kv.second.returnType.name.empty() ? std::string("void")
+                                                : kv.second.returnType.name)
+          << "\n";
     }
     out << "Imported modules: " << importedModules.size() << "\n";
-    for (const auto &m : importedModules) out << "  - " << m.name << "\n";
+    for (const auto &m : importedModules)
+      out << "  - " << m.name << "\n";
     out << "Scopes (count): " << scopes.size() << "\n";
     if (!scopes.empty()) {
       out << "Top scope variables:\n";
       const auto &top = scopes.back();
       for (const auto &v : top) {
         out << "  " << v.first << " : " << v.second.type.name;
-        if (v.second.type.isArray) out << "[]";
+        if (v.second.type.isArray)
+          out << "[]";
         out << (v.second.isInitialized ? " [init]" : " [uninit]") << "\n";
       }
     }
