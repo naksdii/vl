@@ -124,6 +124,16 @@ static Type parseType(VLParser::DataTypeContext *ctx) {
 class Interpreter : public VLBaseVisitor {
 private:
   bool debugMode = false;
+  std::string formatArray(const std::vector<std::string> &arr) {
+    std::string str = "[";
+    for (size_t i = 0; i < arr.size(); ++i) {
+      str += arr[i];
+      if (i + 1 < arr.size())
+        str += ", ";
+    }
+    str += "]";
+    return str;
+  }
   antlr4::TokenStream *tokenStream = nullptr;
   struct Symbol {
     Thing value;
@@ -267,7 +277,7 @@ private:
           throw std::runtime_error("Erro: Variável '" + varName +
                                    "' não inicializada.");
         if (debugMode)
-          std::cerr << "[debug] resolving " << varName << " -> "
+          std::cout << "[debug] resolving " << varName << " -> "
                     << sym->value.toString() << std::endl;
 
         return {sym->value.toString(), sym->arrayValues};
@@ -361,7 +371,7 @@ private:
         else if (op == "-")
           res = leftVal - rightVal;
         if (debugMode) {
-          std::cerr << "[debug] evaluated expr: " << ctx->getText() << "as"
+          std::cout << "[debug] evaluated expr: " << ctx->getText() << "as"
                     << res << std::endl;
         }
         return {std::to_string(res), {}};
@@ -370,7 +380,7 @@ private:
         if (op == "+") {
           auto result = leftArg.value + rightArg.value;
           if (debugMode) {
-            std::cerr << "[debug] evaluated expr: " << ctx->getText() << " as "
+            std::cout << "[debug] evaluated expr: " << ctx->getText() << " as "
                       << result << std::endl;
           }
           return {result, {}};
@@ -388,7 +398,7 @@ public:
   Interpreter(antlr4::TokenStream *ts) : tokenStream(ts) {
     enterScope(); // global scope
     if (debugMode) {
-      std::cerr << "[debug] interpreter initialized with debug mode ON\n";
+      std::cout << "[debug] interpreter initialized with debug mode ON\n";
     }
     // initialize built-ins
     builtins["print"] =
@@ -419,7 +429,7 @@ public:
       return {line, {}};
     };
     if (debugMode) {
-      std::cerr << "[debug] declared builtins functions succesfully."
+      std::cout << "[debug] declared builtins functions succesfully."
                 << std::endl;
     }
   }
@@ -459,7 +469,7 @@ public:
 
     // 4. Executa o ANTLR no código do arquivo importado
     if (debugMode) {
-      std::cerr << "[debug] started importing " << filePath << " as "
+      std::cout << "[debug] started importing " << filePath << " as "
                 << namespaceAlias << "\n";
     }
     auto importInput = std::make_unique<antlr4::ANTLRInputStream>(fileContent);
@@ -509,7 +519,7 @@ public:
       functionTable[globalFuncName] =
           FunctionSymbol{params, returnType, blockText, true};
       if (debugMode) {
-        std::cerr << "[debug] imported function " << funcName << "as"
+        std::cout << "[debug] imported function " << funcName << "as"
                   << globalFuncName << " from " << namespaceAlias << "\n";
       }
     }
@@ -518,7 +528,7 @@ public:
   }
   virtual std::any visitProgram(VLParser::ProgramContext *ctx) override {
     if (debugMode) {
-      std::cerr << "[debug] started the program";
+      std::cout << "[debug] started the program";
     }
     for (auto imp : ctx->importStmt()) {
       visitImportStmt(imp);
@@ -549,13 +559,15 @@ public:
       throw std::runtime_error("Erro: Variável '" + name +
                                "' já declarada neste escopo.");
     }
-
+    if (debugMode) {
+      std::cout << "[debug] defined variable " << name << " with type " << type.name
+                << std::endl;
+    }
     scopes.back()[name] = Symbol{Thing(""), false, type, false, {}};
     return nullptr;
   }
 
-  virtual std::any
-  visitCreateInitStmt(VLParser::CreateInitStmtContext *ctx) override {
+  std::any visitCreateInitStmt(VLParser::CreateInitStmtContext *ctx) override {
     std::string name = ctx->ID()->getText();
     bool isConst = ctx->mutability()->getText() == "const";
     Type type = parseType(ctx->dataType());
@@ -578,6 +590,15 @@ public:
       arrVals = res.arrayValues;
     }
 
+    if (debugMode) {
+      // Monta a representação em texto do array (ex: [1, 2, 3])
+
+      std::cout << "[debug] defined " << (isConst ? "constant" : "variable")
+                << " " << name << " with type " << type.name
+                << " | scalar value: " << valStr << " | array values: ["
+                << formatArray(arrVals) << "]\n";
+    }
+
     scopes.back()[name] = Symbol{Thing(valStr), isConst, type, true, arrVals};
     return nullptr;
   }
@@ -598,7 +619,10 @@ public:
     sym->value = Thing(res.value);
     sym->arrayValues = res.arrayValues;
     sym->isInitialized = true;
-
+    if (debugMode) {
+      std::cout << "[debug] set variable " << targetName << " to value "
+                << res.value << std::endl;
+    }
     return nullptr;
   }
 
@@ -616,7 +640,10 @@ public:
     if (index < 0 || index >= (int)sym->arrayValues.size()) {
       throw std::runtime_error("Erro: Índice fora dos limites.");
     }
-
+    if(debugMode)
+    {
+      std::cout<<"[debug] seted index "<<index<<" from "<< arrName <<" with " << valRes.value <<std::endl;
+    }
     sym->arrayValues[index] = valRes.value;
     return nullptr;
   }
@@ -748,7 +775,7 @@ public:
           FunctionSymbol{params, returnType, ctx->block()->getText(), isPublic};
     }
     if (debugMode) {
-      std::cerr << "[debug] registered function " << funcName
+      std::cout << "[debug] registered function " << funcName
                 << " with params (" << formatParams(params)
                 << ") and return type " << formatType(returnType) << "\n";
     }
@@ -771,7 +798,7 @@ public:
         targetName = sym->value.toString();
       }
       if (debugMode) {
-        std::cerr << "[debug] call " << ctx->funcName->getText() << " -> "
+        std::cout << "[debug] call " << ctx->funcName->getText() << " -> "
                   << targetName
                   << " | value=" << (sym ? sym->value.toString() : "<none>")
                   << std::endl;
@@ -866,7 +893,7 @@ public:
       res = evaluateExpr(ctx->expr());
     }
     if (debugMode) {
-      std::cerr << "[debug] return " << res.value << std::endl;
+      std::cout << "[debug] return " << res.value << std::endl;
     }
     throw ReturnException{res.value, res.arrayValues};
   }
@@ -874,7 +901,7 @@ public:
   // ESTRUTURAS DE CONTROLE
   virtual std::any visitIfStmt(VLParser::IfStmtContext *ctx) override {
     if (debugMode) {
-      std::cerr << "[debug] if condition: " << ctx->condStmt()->getText()
+      std::cout << "[debug] if condition: " << ctx->condStmt()->getText()
                 << std::endl;
     }
     if (std::any_cast<bool>(visit(ctx->condStmt()))) {
@@ -885,12 +912,12 @@ public:
 
   virtual std::any visitLoopStmt(VLParser::LoopStmtContext *ctx) override {
     if (debugMode) {
-      std::cerr << "[debug] loop start" << std::endl;
+      std::cout << "[debug] loop start" << std::endl;
     }
     int n = 1;
     while (std::any_cast<bool>(visit(ctx->condStmt()))) {
       if (debugMode) {
-        std::cerr << "[debug] " << n << " loop iteration" << std::endl;
+        std::cout << "[debug] " << n << " loop iteration" << std::endl;
       }
       visit(ctx->block());
       n++;
@@ -910,7 +937,7 @@ public:
       if (op == "==") {
         bool returnVal = l == r;
         if (debugMode) {
-          std::cerr << "[debug] cond: " << leftRes.value << " " << op << " "
+          std::cout << "[debug] cond: " << leftRes.value << " " << op << " "
                     << rightRes.value << "returned: " << returnVal << "\n";
         }
         return returnVal;
@@ -918,7 +945,7 @@ public:
       if (op == "!=") {
         bool returnVal = l != r;
         if (debugMode) {
-          std::cerr << "[debug] cond: " << leftRes.value << " " << op << " "
+          std::cout << "[debug] cond: " << leftRes.value << " " << op << " "
                     << rightRes.value << "returned: " << returnVal << "\n";
         }
         return returnVal;
@@ -926,7 +953,7 @@ public:
       if (op == ">=") {
         bool returnVal = l >= r;
         if (debugMode) {
-          std::cerr << "[debug] cond: " << leftRes.value << " " << op << " "
+          std::cout << "[debug] cond: " << leftRes.value << " " << op << " "
                     << rightRes.value << "returned: " << returnVal << "\n";
         }
         return returnVal;
@@ -934,7 +961,7 @@ public:
       if (op == "<=") {
         bool returnVal = l <= r;
         if (debugMode) {
-          std::cerr << "[debug] cond: " << leftRes.value << " " << op << " "
+          std::cout << "[debug] cond: " << leftRes.value << " " << op << " "
                     << rightRes.value << "returned: " << returnVal << "\n";
         }
         return returnVal;
@@ -942,7 +969,7 @@ public:
       if (op == ">") {
         bool returnVal = l > r;
         if (debugMode) {
-          std::cerr << "[debug] cond: " << leftRes.value << " " << op << " "
+          std::cout << "[debug] cond: " << leftRes.value << " " << op << " "
                     << rightRes.value << "returned: " << returnVal << "\n";
         }
         return l > r;
@@ -950,7 +977,7 @@ public:
       if (op == "<") {
         bool returnVal = l < r;
         if (debugMode) {
-          std::cerr << "[debug] cond: " << leftRes.value << " " << op << " "
+          std::cout << "[debug] cond: " << leftRes.value << " " << op << " "
                     << rightRes.value << "returned: " << returnVal << "\n";
         }
         return returnVal;
@@ -959,7 +986,7 @@ public:
       if (op == "==") {
         bool returnVal = leftRes.value == rightRes.value;
         if (debugMode) {
-          std::cerr << "[debug] cond: " << leftRes.value << " " << op << " "
+          std::cout << "[debug] cond: " << leftRes.value << " " << op << " "
                     << rightRes.value << "returned: " << returnVal << "\n";
         }
         return returnVal;
@@ -967,7 +994,7 @@ public:
       if (op == "!=") {
         bool returnVal = leftRes.value != rightRes.value;
         if (debugMode) {
-          std::cerr << "[debug] cond: " << leftRes.value << " " << op << " "
+          std::cout << "[debug] cond: " << leftRes.value << " " << op << " "
                     << rightRes.value << "returned: " << returnVal << "\n";
         }
         return returnVal;

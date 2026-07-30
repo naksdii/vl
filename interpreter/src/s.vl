@@ -13,8 +13,9 @@ fn calc => void (a=>float,op =>fn => float (float,float) ,b=>float) exec {
 }
 exec
 {
-    mut a => float  = input();
+    mut a => []float = [];
+    a->push(input());
     mut op => string = input();
-    mut b => float = input();
-    calc(a,op,b);
+    a->push(input());
+    calc(a[0],op,a[1]);
 }

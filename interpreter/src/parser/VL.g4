@@ -163,7 +163,7 @@ typeList
     ;
 
 arrayLiteral
-    : '[' (literal (',' literal)*)? ']'
+    : ('[' (literal (',' literal)*)? ']'|'[]')
     ;
 
 literal
