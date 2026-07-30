@@ -1,39 +1,42 @@
 # --- Configuration ---
-TARGET        = verbose_lang
+TARGET        = verbios_lang
 CXX           = g++
-CXXFLAGS      = -std=c++17 -O3 -I/usr/include/antlr4-runtime -I. -Iinclude -Iparser -static
-LDFLAGS       = -lantlr4-runtime
+CXXFLAGS      = -std=c++17 -O3 -I/usr/include/antlr4-runtime -I. -Iinclude -Iparser
+LDFLAGS       = -lantlr4-runtime -lpthread
 
 # --- ANTLR Configuration ---
 GRAMMAR_FILE  = VL.g4
 GRAMMAR_DIR   = parser
 GRAMMAR_PATH  = $(GRAMMAR_DIR)/$(GRAMMAR_FILE)
 
-# Generated files by ANTLR4
-ANTLR_GEN_FILES = $(GRAMMAR_DIR)/VLLexer.cpp $(GRAMMAR_DIR)/VLParser.cpp \
-                  $(GRAMMAR_DIR)/VLVisitor.cpp $(GRAMMAR_DIR)/VLListener.cpp
-
-# --- Source and Object Files ---
-# Find manual source files and add generated parser files
-USER_SRCS     = $(wildcard *.cpp)
-ALL_SRCS      = $(USER_SRCS) $(wildcard $(GRAMMAR_DIR)/*.cpp)
-OBJS          = $(ALL_SRCS:.cpp=.o)
-
 # --- Rules ---
-all: antlr $(TARGET)
+all: antlr build_target
 
-# Run ANTLR4 to generate C++ files if the grammar file changed
+# 1. Garante que o ANTLR roda primeiro e gera os arquivos
 antlr: $(GRAMMAR_PATH)
 	@echo "--- Executando ANTLR4 ---"
 	cd $(GRAMMAR_DIR) && antlr4 -Dlanguage=Cpp -visitor $(GRAMMAR_FILE)
 
-# Link the final executable (depends on antlr first to ensure files exist)
-$(TARGET): antlr $(OBJS)
+# 2. Avalia os arquivos e compila o binário em um segundo passo protegido
+build_target: antlr
+	@$(MAKE) --no-print-directory internal_build
+
+# --- Source and Object Files (Avaliados sob demanda) ---
+USER_SRCS     = main.cpp
+PARSER_SRCS   = $(wildcard $(GRAMMAR_DIR)/*.cpp)
+ALL_SRCS      = $(USER_SRCS) $(PARSER_SRCS)
+OBJS          = $(ALL_SRCS:.cpp=.o)
+
+internal_build: $(OBJS)
 	$(CXX) $(CXXFLAGS) $(OBJS) -o $(TARGET) $(LDFLAGS)
 	@echo "--- Compilação concluída com sucesso! ---"
 
-# Compile source files into object files
+# Compile root source files into object files
 %.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+# Compile parser source files into object files
+$(GRAMMAR_DIR)/%.o: $(GRAMMAR_DIR)/%.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # Clean object files and binary
@@ -46,6 +49,6 @@ clean-all: clean
 	      $(GRAMMAR_DIR)/VLVisitor* $(GRAMMAR_DIR)/VLListener* \
 	      $(GRAMMAR_DIR)/*.interp $(GRAMMAR_DIR)/*.tokens
 
-.PHONY: all antlr clean clean-all
+.PHONY: all antlr build_target internal_build clean clean-all run
 run: $(TARGET)
 	./$(TARGET)

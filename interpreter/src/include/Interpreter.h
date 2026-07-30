@@ -360,11 +360,20 @@ private:
           res = leftVal + rightVal;
         else if (op == "-")
           res = leftVal - rightVal;
+        if (debugMode) {
+          std::cerr << "[debug] evaluated expr: " << ctx->getText() << "as"
+                    << res << std::endl;
+        }
         return {std::to_string(res), {}};
       } catch (...) {
         // Fallback: if '+' then perform string concatenation
         if (op == "+") {
-          return {leftArg.value + rightArg.value, {}};
+          auto result = leftArg.value + rightArg.value;
+          if (debugMode) {
+            std::cerr << "[debug] evaluated expr: " << ctx->getText() << " as "
+                      << result << std::endl;
+          }
+          return {result, {}};
         }
         throw std::runtime_error("Erro: Operação aritmética '-' não aplicável "
                                  "a operandos não numéricos.");
@@ -375,9 +384,12 @@ private:
   }
 
 public:
+  void setDebug(bool debug) { debugMode = debug; }
   Interpreter(antlr4::TokenStream *ts) : tokenStream(ts) {
     enterScope(); // global scope
-
+    if (debugMode) {
+      std::cerr << "[debug] interpreter initialized with debug mode ON\n";
+    }
     // initialize built-ins
     builtins["print"] =
         [&](const std::vector<ResolvedArg> &args) -> ResolvedArg {
@@ -406,10 +418,10 @@ public:
         line = "";
       return {line, {}};
     };
-  }
-  void setDebug(bool val) {
-    this->debugMode = val;
-    return;
+    if (debugMode) {
+      std::cerr << "[debug] declared builtins functions succesfully."
+                << std::endl;
+    }
   }
   // PROGRAMA E BLOCOS
   virtual std::any visitImportStmt(VLParser::ImportStmtContext *ctx) override {
@@ -446,6 +458,10 @@ public:
     std::string fileContent = buffer.str();
 
     // 4. Executa o ANTLR no código do arquivo importado
+    if (debugMode) {
+      std::cerr << "[debug] started importing " << filePath << " as "
+                << namespaceAlias << "\n";
+    }
     auto importInput = std::make_unique<antlr4::ANTLRInputStream>(fileContent);
     auto importLexer = std::make_unique<VLLexer>(importInput.get());
     auto importTokens =
@@ -492,11 +508,18 @@ public:
           getTextFromTokenInterval(stored.tokens.get(), interval);
       functionTable[globalFuncName] =
           FunctionSymbol{params, returnType, blockText, true};
+      if (debugMode) {
+        std::cerr << "[debug] imported function " << funcName << "as"
+                  << globalFuncName << " from " << namespaceAlias << "\n";
+      }
     }
 
     return nullptr;
   }
   virtual std::any visitProgram(VLParser::ProgramContext *ctx) override {
+    if (debugMode) {
+      std::cerr << "[debug] started the program";
+    }
     for (auto imp : ctx->importStmt()) {
       visitImportStmt(imp);
     }
@@ -724,7 +747,11 @@ public:
       functionTable[funcName] =
           FunctionSymbol{params, returnType, ctx->block()->getText(), isPublic};
     }
-
+    if (debugMode) {
+      std::cerr << "[debug] registered function " << funcName
+                << " with params (" << formatParams(params)
+                << ") and return type " << formatType(returnType) << "\n";
+    }
     return nullptr;
   }
 
@@ -838,11 +865,18 @@ public:
     if (ctx->expr()) {
       res = evaluateExpr(ctx->expr());
     }
+    if (debugMode) {
+      std::cerr << "[debug] return " << res.value << std::endl;
+    }
     throw ReturnException{res.value, res.arrayValues};
   }
 
   // ESTRUTURAS DE CONTROLE
   virtual std::any visitIfStmt(VLParser::IfStmtContext *ctx) override {
+    if (debugMode) {
+      std::cerr << "[debug] if condition: " << ctx->condStmt()->getText()
+                << std::endl;
+    }
     if (std::any_cast<bool>(visit(ctx->condStmt()))) {
       visit(ctx->block());
     }
@@ -850,8 +884,16 @@ public:
   }
 
   virtual std::any visitLoopStmt(VLParser::LoopStmtContext *ctx) override {
+    if (debugMode) {
+      std::cerr << "[debug] loop start" << std::endl;
+    }
+    int n = 1;
     while (std::any_cast<bool>(visit(ctx->condStmt()))) {
+      if (debugMode) {
+        std::cerr << "[debug] " << n << " loop iteration" << std::endl;
+      }
       visit(ctx->block());
+      n++;
     }
     return nullptr;
   }
@@ -865,23 +907,71 @@ public:
       int l = std::stoi(leftRes.value);
       int r = std::stoi(rightRes.value);
 
-      if (op == "==")
-        return l == r;
-      if (op == "!=")
-        return l != r;
-      if (op == ">=")
-        return l >= r;
-      if (op == "<=")
-        return l <= r;
-      if (op == ">")
+      if (op == "==") {
+        bool returnVal = l == r;
+        if (debugMode) {
+          std::cerr << "[debug] cond: " << leftRes.value << " " << op << " "
+                    << rightRes.value << "returned: " << returnVal << "\n";
+        }
+        return returnVal;
+      }
+      if (op == "!=") {
+        bool returnVal = l != r;
+        if (debugMode) {
+          std::cerr << "[debug] cond: " << leftRes.value << " " << op << " "
+                    << rightRes.value << "returned: " << returnVal << "\n";
+        }
+        return returnVal;
+      }
+      if (op == ">=") {
+        bool returnVal = l >= r;
+        if (debugMode) {
+          std::cerr << "[debug] cond: " << leftRes.value << " " << op << " "
+                    << rightRes.value << "returned: " << returnVal << "\n";
+        }
+        return returnVal;
+      }
+      if (op == "<=") {
+        bool returnVal = l <= r;
+        if (debugMode) {
+          std::cerr << "[debug] cond: " << leftRes.value << " " << op << " "
+                    << rightRes.value << "returned: " << returnVal << "\n";
+        }
+        return returnVal;
+      }
+      if (op == ">") {
+        bool returnVal = l > r;
+        if (debugMode) {
+          std::cerr << "[debug] cond: " << leftRes.value << " " << op << " "
+                    << rightRes.value << "returned: " << returnVal << "\n";
+        }
         return l > r;
-      if (op == "<")
-        return l < r;
+      }
+      if (op == "<") {
+        bool returnVal = l < r;
+        if (debugMode) {
+          std::cerr << "[debug] cond: " << leftRes.value << " " << op << " "
+                    << rightRes.value << "returned: " << returnVal << "\n";
+        }
+        return returnVal;
+      }
     } catch (...) {
-      if (op == "==")
-        return leftRes.value == rightRes.value;
-      if (op == "!=")
-        return leftRes.value != rightRes.value;
+      if (op == "==") {
+        bool returnVal = leftRes.value == rightRes.value;
+        if (debugMode) {
+          std::cerr << "[debug] cond: " << leftRes.value << " " << op << " "
+                    << rightRes.value << "returned: " << returnVal << "\n";
+        }
+        return returnVal;
+      }
+      if (op == "!=") {
+        bool returnVal = leftRes.value != rightRes.value;
+        if (debugMode) {
+          std::cerr << "[debug] cond: " << leftRes.value << " " << op << " "
+                    << rightRes.value << "returned: " << returnVal << "\n";
+        }
+        return returnVal;
+      }
       throw std::runtime_error(
           "Erro: Operador de comparação incompatível com os tipos fornecidos.");
     }
