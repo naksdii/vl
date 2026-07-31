@@ -136,7 +136,7 @@ private:
   }
   antlr4::TokenStream *tokenStream = nullptr;
   struct Symbol {
-    Thing value;
+    obj value;
     bool isConstant;
     Type type;
     bool isInitialized;
@@ -411,7 +411,7 @@ public:
       }
       std::string outStr = out.str();
       // program output goes to stdout only
-      std::cout << outStr << std::endl << std::flush;
+      std::cout << outStr;
       // detailed log in English
       return {outStr, {}};
     };
@@ -528,7 +528,7 @@ public:
   }
   virtual std::any visitProgram(VLParser::ProgramContext *ctx) override {
     if (debugMode) {
-      std::cout << "[debug] started the program";
+      std::cout << "[debug] started the program\n";
     }
     for (auto imp : ctx->importStmt()) {
       visitImportStmt(imp);
@@ -616,7 +616,7 @@ public:
                                "' não pode ser alterada.");
 
     ResolvedArg res = evaluateExpr(ctx->expr());
-    sym->value = Thing(res.value);
+    sym->value = obj(res.value);
     sym->arrayValues = res.arrayValues;
     sym->isInitialized = true;
     if (debugMode) {

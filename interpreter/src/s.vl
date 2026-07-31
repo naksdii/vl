@@ -1,21 +1,6 @@
-fn add => float (a=>float,b=>float) exec { return a + b; }
-fn sub => float (a=>float,b=>float) exec { return a - b; }
-fn mul => float (a=>float,b=>float) exec { return a * b;}
-fn div => float (a=>float,b=>float) exec {
-    if (b == 0) exec {
-        print ("Division by zero not allowed");
-        return 0;
-    }
-    return a / b;
-}
-fn calc => void (a=>float,op =>fn => float (float,float) ,b=>float) exec {
-    print(op(a,b));
-}
+
 exec
 {
-    mut a => []float = [];
-    a->push(input());
-    mut op => string = input();
-    a->push(input());
-    calc(a[0],op,a[1]);
+    print("gay");
+    print("gay");
 }

@@ -3,11 +3,11 @@
 #include <string>
 #include <iostream>
 
-struct Thing {
+struct obj {
     std::string data;
 
-    Thing() : data("") {}
-    Thing(const std::string& val) : data(val) {}
+    obj() : data("") {}
+    obj(const std::string& val) : data(val) {}
 
     // Retorna a string limpa (sem as aspas de literal, se existirem)
     std::string toString() const {
@@ -18,7 +18,7 @@ struct Thing {
     }
 
     // Permite fazer `std::cout << thing_obj;`
-    friend std::ostream& operator<<(std::ostream& os, const Thing& t) {
+    friend std::ostream& operator<<(std::ostream& os, const obj& t) {
         os << t.toString();
         return os;
     }
