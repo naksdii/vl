@@ -1,3 +1,0 @@
---- Executando ANTLR4 ---
-cd parser && antlr4 -Dlanguage=Cpp -visitor VL.g4
-g++ -std=c++17 -O3 -I/usr/include/antlr4-runtime -I. -Iinclude -Iparser -c main.cpp -o main.o
