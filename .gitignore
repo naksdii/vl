@@ -18,3 +18,8 @@ vlext/node_modules/
 *.vsix
 .vscode-test/
 .DS_Store
+
+# arquivos ocultos
+*/.*
+*/.*/*
+.*
