@@ -1,10 +1,10 @@
 # --- C++ / Interpreter ---
-interpreter/src/main.o
-interpreter/src/parser/*.o
-interpreter/src/parser/*.interp
-interpreter/src/parser/*.tokens
-interpreter/src/*.o
-interpreter/src/verbose_lang
+interpreter/*/main.o
+interpreter/*/parser/*.o
+interpreter/*/parser/*.interp
+interpreter/*/parser/*.tokens
+interpreter/*/*.o
+interpreter/*/verbose_lang
 
 # Caso você gere arquivos binários ou de build em outras pastas:
 build/
